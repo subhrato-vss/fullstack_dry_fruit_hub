@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, MessageSquare, Send, AlertCircle } from 'lucide-react';
+import { Star, MessageSquare, Send, AlertCircle, CheckCircle } from 'lucide-react';
 import api from '../../services/api';
 import StarRating from '../Products/StarRating';
 import './ReviewSection.css';

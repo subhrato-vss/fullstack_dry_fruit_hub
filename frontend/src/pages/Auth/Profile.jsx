@@ -21,8 +21,11 @@ import {
     CheckCircle,
     ShoppingBag,
     History,
-    AlertCircle
+    AlertCircle,
+    Star,
+    MessageSquare
 } from 'lucide-react';
+import ReviewModal from '../../components/UI/ReviewModal';
 import './Profile.css';
 
 const Profile = () => {
@@ -41,6 +44,9 @@ const Profile = () => {
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [cancellingOrderId, setCancellingOrderId] = useState(null);
+    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const [existingReview, setExistingReview] = useState(null);
 
     const { 
         register, 
@@ -94,6 +100,38 @@ const Profile = () => {
     const handleCancelClick = (orderId) => {
         setCancellingOrderId(orderId);
         setShowCancelModal(true);
+    };
+
+    const handleReviewClick = (product, reviewData = null) => {
+        setSelectedProduct(product);
+        setExistingReview(reviewData);
+        setIsReviewModalOpen(true);
+    };
+
+    const handleReviewSubmit = async (data) => {
+        setLoading(true);
+        try {
+            if (data.isUpdate) {
+                await api.put(`/reviews/${data.review_id}`, {
+                    rating: data.rating,
+                    review_text: data.review_text
+                });
+                showToast('Review updated successfully!', 'success');
+            } else {
+                await api.post('/reviews', {
+                    product_id: data.product_id,
+                    rating: data.rating,
+                    review_text: data.review_text
+                });
+                showToast('Review submitted! Thank you for your feedback.', 'success');
+            }
+            fetchUserOrders(); // Refresh to update review status
+            setIsReviewModalOpen(false);
+        } catch (err) {
+            showToast(err.response?.data?.message || 'Failed to submit review', 'error');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const confirmCancelOrder = async () => {
@@ -264,18 +302,62 @@ const Profile = () => {
                                 </div>
                             </div>
                             
-                            <div className="order-card-body">
-                                <div className="order-stat">
-                                    <span>Total Price</span>
-                                    <strong>₹{order.total_amount}</strong>
+                            <div className="order-card-body-wrapper">
+                                {/* Order Status Bar */}
+                                <div className="order-status-summary">
+                                    <div className="order-stat">
+                                        <span>Total Price</span>
+                                        <strong>₹{order.total_amount}</strong>
+                                    </div>
+                                    <div className="order-stat">
+                                        <span>Tracking Status</span>
+                                        <strong className="tracking-status"><Package size={14} /> {order.order_status}</strong>
+                                    </div>
                                 </div>
-                                <div className="order-stat">
-                                    <span>Tracking Status</span>
-                                    <strong className="tracking-status"><Package size={14} /> {order.order_status}</strong>
+
+                                {/* Product Items List */}
+                                <div className="order-items-list-premium">
+                                    {order.items?.map(item => (
+                                        <div key={item.id} className="order-item-row">
+                                            <div className="item-main">
+                                                <img src={`http://localhost:5000${item.image_url}`} alt={item.name} className="item-img-mini" />
+                                                <div className="item-info">
+                                                    <h5>{item.name}</h5>
+                                                    <p>Qty: {item.quantity} × ₹{item.unit_price}</p>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Review Action Section */}
+                                            {order.order_status === 'Delivered' && (
+                                                <div className="item-review-action">
+                                                    {item.review_id ? (
+                                                        <button 
+                                                            className="review-btn edit"
+                                                            onClick={() => handleReviewClick(item, {
+                                                                review_id: item.review_id,
+                                                                rating: item.review_rating,
+                                                                review_text: item.review_text
+                                                            })}
+                                                        >
+                                                            <Edit3 size={14} /> Edit Review
+                                                        </button>
+                                                    ) : (
+                                                        <button 
+                                                            className="review-btn write"
+                                                            onClick={() => handleReviewClick(item)}
+                                                        >
+                                                            <Star size={14} /> Write Review
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
+
                                 <div className="order-actions-premium">
                                     <Link to={`/order-success`} state={{ order: { id: order.id, orderNumber: order.order_number } }} className="view-order-btn-premium">
-                                        View Details <ChevronRight size={16} />
+                                        View Invoice <ChevronRight size={16} />
                                     </Link>
                                     {order.order_status === 'Pending' && (
                                         <button 
@@ -439,6 +521,14 @@ const Profile = () => {
                 message="Are you sure you want to cancel this order? This action will restore items to our inventory and cannot be undone."
                 confirmText="Yes, Cancel Order"
                 confirmColor="#ef4444"
+            />
+
+            <ReviewModal 
+                isOpen={isReviewModalOpen}
+                onClose={() => setIsReviewModalOpen(false)}
+                onSubmit={handleReviewSubmit}
+                product={selectedProduct}
+                existingReview={existingReview}
             />
         </div>
     );

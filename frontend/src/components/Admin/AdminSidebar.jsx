@@ -51,10 +51,10 @@ const AdminSidebar = ({ isCollapsed, toggleSidebar, onLogout }) => {
             </nav>
 
             <div className="sidebar-footer">
-                <NavLink to="/" className="nav-item">
+                {/* <NavLink to="/" className="nav-item">
                     <span className="icon"><Home size={20} /></span>
                     {!isCollapsed && <span className="label">Back to Store</span>}
-                </NavLink>
+                </NavLink> */}
                 <button className="nav-item logout-btn" onClick={onLogout}>
                     <span className="icon"><LogOut size={20} /></span>
                     {!isCollapsed && <span className="label">Logout</span>}

@@ -154,15 +154,40 @@ export const createPaymentRecord = async (paymentData) => {
 };
 
 /**
- * Fetches all orders for a specific user.
+ * Fetches all orders for a specific user, including product items for each order.
  */
 export const getUserOrders = async (userId) => {
-    const sql = `
+    // 1. Fetch Orders
+    const orderSql = `
         SELECT * FROM orders 
         WHERE user_id = ? 
         ORDER BY created_at DESC
     `;
-    return await query(sql, [userId]);
+    const orders = await query(orderSql, [userId]);
+
+    if (orders.length === 0) return [];
+
+    // 2. Fetch all items for these orders in one query to avoid N+1
+    const orderIds = orders.map(o => o.id);
+    const detailsSql = `
+        SELECT od.*, p.name, p.image_url,
+               r.id as review_id,
+               r.rating as review_rating,
+               r.review_text as review_text
+        FROM order_details od
+        JOIN products p ON od.product_id = p.id
+        LEFT JOIN reviews r ON r.product_id = od.product_id AND r.user_id = ?
+        WHERE od.order_id IN (${orderIds.join(',')})
+    `;
+    const allItems = await query(detailsSql, [userId]);
+
+    // 3. Group items by order_id
+    const ordersWithItems = orders.map(order => ({
+        ...order,
+        items: allItems.filter(item => item.order_id === order.id)
+    }));
+
+    return ordersWithItems;
 };
 
 /**
