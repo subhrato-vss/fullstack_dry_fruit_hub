@@ -23,8 +23,9 @@ export const getAllProducts = async (categoryId, searchQuery, sort = 'newest') =
     }
 
     if (searchQuery) {
-        sql += ' AND p.name LIKE ?';
-        params.push(`%${searchQuery}%`);
+        sql += ' AND (p.name LIKE ? OR p.description LIKE ? OR p.health_benefits LIKE ?)';
+        const searchParam = `%${searchQuery}%`;
+        params.push(searchParam, searchParam, searchParam);
     }
 
     sql += ' GROUP BY p.id';

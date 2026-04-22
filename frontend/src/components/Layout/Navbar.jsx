@@ -23,7 +23,7 @@ const Navbar = () => {
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/?search=${searchQuery}`);
+      navigate(`/products?search=${searchQuery}`);
       setSearchQuery('');
     }
   };

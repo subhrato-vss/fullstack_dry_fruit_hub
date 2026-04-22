@@ -27,8 +27,22 @@ const Catalog = () => {
     }, []);
 
     useEffect(() => {
+        if (searchQuery) {
+            setActiveCategory('');
+        }
+    }, [searchQuery]);
+
+    useEffect(() => {
         fetchProducts();
     }, [location.search, activeCategory, sortBy]);
+
+    const handleCategoryClick = (categoryId) => {
+        setActiveCategory(categoryId);
+        // Clear search when selecting a category
+        if (searchQuery) {
+            navigate('/products');
+        }
+    };
 
     const fetchCategories = async () => {
         try {
@@ -73,7 +87,7 @@ const Catalog = () => {
                         <div className="category-filters">
                             <button
                                 className={`filter-option ${activeCategory === '' ? 'active' : ''}`}
-                                onClick={() => setActiveCategory('')}
+                                onClick={() => handleCategoryClick('')}
                             >
                                 All Products
                             </button>
@@ -81,7 +95,7 @@ const Catalog = () => {
                                 <button
                                     key={cat.id}
                                     className={`filter-option ${activeCategory == cat.id ? 'active' : ''}`}
-                                    onClick={() => setActiveCategory(cat.id)}
+                                    onClick={() => handleCategoryClick(cat.id)}
                                 >
                                     {cat.name}
                                 </button>
