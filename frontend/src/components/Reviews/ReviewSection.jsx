@@ -11,11 +11,24 @@ const ReviewSection = ({ productId }) => {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
+    const [hasReviewed, setHasReviewed] = useState(false);
     const { user } = useAuth();
 
     useEffect(() => {
         fetchReviews();
-    }, [productId]);
+        if (user) {
+            checkEligibility();
+        }
+    }, [productId, user]);
+
+    const checkEligibility = async () => {
+        try {
+            const data = await api.get(`/reviews/check/${productId}`);
+            setHasReviewed(data.alreadyReviewed);
+        } catch (err) {
+            console.error('Error checking review eligibility:', err);
+        }
+    };
 
     const fetchReviews = async () => {
         try {
@@ -60,28 +73,34 @@ const ReviewSection = ({ productId }) => {
 
             {/* Submission Form */}
             {user ? (
-                <form className="review-form glass" onSubmit={handleSubmit}>
-                    <h3>Share your thoughts</h3>
-                    <div className="rating-input-row">
-                        <label>Your Rating:</label>
-                        <StarRating 
-                            rating={newReview.rating} 
-                            editable={true} 
-                            size={24} 
-                            onRate={(r) => setNewReview({...newReview, rating: r})} 
+                !hasReviewed ? (
+                    <form className="review-form glass" onSubmit={handleSubmit}>
+                        <h3>Share your thoughts</h3>
+                        <div className="rating-input-row">
+                            <label>Your Rating:</label>
+                            <StarRating 
+                                rating={newReview.rating} 
+                                editable={true} 
+                                size={24} 
+                                onRate={(r) => setNewReview({...newReview, rating: r})} 
+                            />
+                        </div>
+                        <textarea 
+                            placeholder="What did you like or dislike? How was the quality?"
+                            value={newReview.text}
+                            onChange={(e) => setNewReview({...newReview, text: e.target.value})}
+                            required
                         />
+                        {error && <div className="review-error"><AlertCircle size={14} /> {error}</div>}
+                        <button type="submit" className="btn btn-primary" disabled={submitting}>
+                            {submitting ? 'Submitting...' : <><Send size={18} /> Post Review</>}
+                        </button>
+                    </form>
+                ) : (
+                    <div className="already-reviewed-msg glass">
+                        <p><CheckCircle size={18} /> You have already reviewed this product. Thank you for your feedback!</p>
                     </div>
-                    <textarea 
-                        placeholder="What did you like or dislike? How was the quality?"
-                        value={newReview.text}
-                        onChange={(e) => setNewReview({...newReview, text: e.target.value})}
-                        required
-                    />
-                    {error && <div className="review-error"><AlertCircle size={14} /> {error}</div>}
-                    <button type="submit" className="btn btn-primary" disabled={submitting}>
-                        {submitting ? 'Submitting...' : <><Send size={18} /> Post Review</>}
-                    </button>
-                </form>
+                )
             ) : (
                 <div className="login-prompt glass">
                     <p>Please <button className="text-link" onClick={() => window.location.href='/login'}>Login</button> to write a review.</p>

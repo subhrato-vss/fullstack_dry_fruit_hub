@@ -90,41 +90,63 @@ export const getProductAIResponse = async (product, question) => {
         intake: 'Moderate consumption (30g) daily.'
     };
 
+    // Helper to sanitize data (handle null strings from DB)
+    const sanitize = (val) => {
+        if (!val || val === 'null' || val === 'undefined') return null;
+        return val;
+    };
+
     // Prioritize product-specific content over mock category data
     const data = {
-        benefits: product.health_benefits || categoryData.benefits,
-        nutrients: product.nutrition_info || categoryData.nutrients,
-        intake: product.recommended_intake || categoryData.intake
+        benefits: sanitize(product.health_benefits) || categoryData.benefits,
+        nutrients: sanitize(product.nutrition_info) || categoryData.nutrients,
+        intake: sanitize(product.recommended_intake) || categoryData.intake,
+        notes: sanitize(product.ai_context_notes)
     };
 
     const q = question.toLowerCase();
-    if (q.includes('benefit') || q.includes('good for') || q.includes('help')) {
-        return `As an expert at DryFruit Hub, I can confirm that ${product.name} is exceptional for your health. ${data.benefits}`;
-    } else if (q.includes('nutrient') || q.includes('value') || q.includes('protein') || q.includes('calories')) {
+    
+    if (q.includes('benefit') || q.includes('good for') || q.includes('help') || q.includes('why')) {
+        let resp = `As an expert at DryFruit Hub, I can confirm that ${product.name} is exceptional for your health. ${data.benefits}`;
+        if (data.notes) resp += `\n\nNote: ${data.notes}`;
+        return resp;
+    } else if (q.includes('nutrient') || q.includes('value') || q.includes('protein') || q.includes('calories') || q.includes('fat')) {
         return `Here is the nutritional profile for our premium ${product.name}: ${data.nutrients}`;
-    } else if (q.includes('how many') || q.includes('daily') || q.includes('intake') || q.includes('much')) {
+    } else if (q.includes('how many') || q.includes('daily') || q.includes('intake') || q.includes('much') || q.includes('eat')) {
         return `For optimal results, the recommended daily intake for ${product.name} is: ${data.intake}`;
+    } else if (q.includes('storage') || q.includes('keep') || q.includes('fresh')) {
+        return `To keep your ${product.name} fresh, store them in an airtight container in a cool, dry place. Refrigeration can extend shelf life up to 6 months!`;
     } else {
-        return `I am specifically here to help with nutritional advice for ${product.name}. You can ask me about its health benefits, nutritional value, or recommended daily intake.`;
+        return `I am specifically here to help with nutritional advice for ${product.name}. You can ask me about its health benefits, nutritional value, recommended daily intake, or storage tips.`;
     }
 };
 
 /**
  * General Nutritional Advisor
  */
-export const getGeneralAIResponse = async (question) => {
+export const getGeneralAIResponse = async (question, products = []) => {
     if (openai) {
         try {
+            // Create a concise list of products for the AI context
+            const productContext = products.map(p => 
+                `- ${p.name} (Price: ₹${p.price}, Benefits: ${p.health_benefits || p.description})`
+            ).join('\n');
+
             const systemPrompt = `
                 You are the Chief Nutritionist at "DryFruit Hub".
-                Your goal is to provide expert advice on dry fruits, nuts, seeds, and healthy snacking.
+                Your goal is to provide expert advice on dry fruits and healthy snacking.
                 
+                AVAILABLE PRODUCTS IN OUR STORE:
+                ${productContext}
+
                 RULES:
                 1. Provide science-backed nutritional insights.
-                2. Recommend specific products (Almonds, Cashews, Walnuts, Pistachios, Dates) for different health goals (e.g., "Weight loss", "Heart Health").
-                3. If asked about a medical condition, provide nutritional info but add a disclaimer to consult a doctor.
-                4. Refuse topics unrelated to health, nutrition, or dry fruits.
-                5. Use a warm, premium, and helpful tone.
+                2. ALWAYS recommend specific products from the list above when relevant to the user's goal (e.g., "Weight loss", "Heart Health").
+                3. Use the product names exactly as listed.
+                4. If asked about a medical condition, provide nutritional info but add a disclaimer to consult a doctor.
+                5. Refuse topics unrelated to health, nutrition, or dry fruits.
+                6. Use a warm, premium, and helpful tone.
+                7. You can use Markdown for better formatting.
             `;
 
             const response = await openai.chat.completions.create({
@@ -134,7 +156,7 @@ export const getGeneralAIResponse = async (question) => {
                     { role: "user", content: question }
                 ],
                 temperature: 0.7,
-                max_tokens: 400
+                max_tokens: 500
             });
 
             return response.choices[0].message.content;
@@ -143,22 +165,61 @@ export const getGeneralAIResponse = async (question) => {
         }
     }
 
-    // Mock Fallback for General Queries
+    // Mock Fallback for General Queries - Now Product Aware!
     const q = question.toLowerCase();
     
+    // Find products that match keywords in the user's question
+    const findProducts = (keywords) => {
+        return products.filter(p => {
+            const content = `${p.name} ${p.health_benefits} ${p.description} ${p.category_name}`.toLowerCase();
+            return keywords.some(k => content.includes(k));
+        });
+    };
+
+    let response = "";
+
     if (q.includes('weight') || q.includes('fat') || q.includes('slim')) {
-        return "For weight management, I highly recommend our premium Almonds and Pistachios. They are high in protein and fiber, which helps keep you feel full longer. Almonds also contain healthy monounsaturated fats that support metabolism.";
+        const matches = findProducts(['weight', 'fat', 'diet', 'metabolism', 'almond', 'pistachio']);
+        response = "For weight management, high-protein and high-fiber options are best. ";
+        if (matches.length > 0) {
+            response += `I recommend our ${matches.slice(0, 2).map(p => p.name).join(' and ')}. `;
+        }
+        response += "These help keep you full longer and support a healthy metabolism.";
     } else if (q.includes('heart') || q.includes('cholesterol') || q.includes('cardio')) {
-        return "Walnuts are the gold standard for heart health as they are exceptionally high in Omega-3 fatty acids. Almonds also help lower LDL (bad) cholesterol levels. Combine them for a heart-healthy mix!";
+        const matches = findProducts(['heart', 'cholesterol', 'omega', 'walnut', 'almond']);
+        response = "For heart health, look for healthy fats and Omega-3s. ";
+        if (matches.length > 0) {
+            response += `Our ${matches.slice(0, 2).map(p => p.name).join(' and ')} are excellent choices for maintaining healthy cholesterol levels.`;
+        }
     } else if (q.includes('skin') || q.includes('glow') || q.includes('hair')) {
-        return "For radiant skin and strong hair, make Almonds and Cashews your best friends. Almonds are loaded with Vitamin E (a powerful antioxidant), and Cashews provide Copper and Zinc essential for collagen production.";
+        const matches = findProducts(['skin', 'hair', 'vitamin e', 'collagen', 'almond', 'cashew']);
+        response = "For radiant skin and strong hair, Vitamin E and Zinc are essential. ";
+        if (matches.length > 0) {
+            response += `I highly suggest ${matches.slice(0, 2).map(p => p.name).join(' and ')} for your daily routine.`;
+        }
     } else if (q.includes('energy') || q.includes('tired') || q.includes('active')) {
-        return "Need a natural boost? Dates are the perfect energy food! They provide natural sugars for instant fuel and fiber for a sustained release. Cashews also provide magnesium to help fight fatigue.";
+        const matches = findProducts(['energy', 'sugar', 'dates', 'raisins', 'natural fuel']);
+        response = "Need an energy boost? Natural sugars and healthy minerals are key. ";
+        if (matches.length > 0) {
+            response += `Our ${matches.slice(0, 2).map(p => p.name).join(' and ')} are the perfect natural fuel for an active lifestyle.`;
+        }
     } else if (q.includes('brain') || q.includes('memory') || q.includes('focus')) {
-        return "Walnuts are literally shaped like brains for a reason! They are rich in ALA (Omega-3), which is crucial for cognitive function and memory. Almonds also support brain health with L-carnitine and riboflavin.";
+        const matches = findProducts(['brain', 'memory', 'focus', 'walnut', 'omega']);
+        response = "Cognitive health benefits greatly from Omega-3 fatty acids and antioxidants. ";
+        if (matches.length > 0) {
+            response += `You should try our ${matches.slice(0, 2).map(p => p.name).join(' and ')} to support brain function.`;
+        }
     } else if (q.includes('hello') || q.includes('hi ') || q.includes('hey')) {
-        return "Hello! I am your DryFruit Hub Nutritionist. How can I help you achieve your health goals today? You can ask me about weight loss, heart health, or the benefits of any dry fruit!";
+        response = "Hello! I am your DryFruit Hub AI Nutritionist. I have analyzed all our products and I'm ready to help you find the best ones for your health goals. Ask me about weight loss, heart health, or any specific fruit!";
+    } else if (q.includes('list') || q.includes('what') || q.includes('products') || q.includes('have')) {
+        if (products.length > 0) {
+            response = `We have a fantastic range of premium dry fruits including ${products.slice(0, 5).map(p => p.name).join(', ')}, and more! Which health goal can I help you with?`;
+        } else {
+            response = "We have many premium nuts and dry fruits available. Are you looking for something specific like Almonds, Cashews, or Dates?";
+        }
     } else {
-        return "That's an interesting question! At DryFruit Hub, we focus on the nutritional power of nuts and dried fruits. I can help you find the best choices for your specific health goals like heart health, energy, or skin glow. What are you looking to achieve?";
+        response = "That's an interesting question! Based on the premium products we have in stock, I can recommend the best mix for your needs. Are you focusing on energy, heart health, or perhaps weight management?";
     }
+
+    return response;
 };

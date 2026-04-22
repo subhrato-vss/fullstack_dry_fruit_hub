@@ -45,7 +45,15 @@ export const askGeneralAI = async (req, res, next) => {
             return res.status(400).json({ message: 'A question is required.' });
         }
 
-        const response = await AIService.getGeneralAIResponse(question);
+        // Fetch products for context
+        const sql = `
+            SELECT p.id, p.name, p.price, p.health_benefits, p.description, c.name as category_name
+            FROM products p
+            JOIN categories c ON p.category_id = c.id
+        `;
+        const products = await query(sql);
+
+        const response = await AIService.getGeneralAIResponse(question, products);
 
         res.json({
             answer: response

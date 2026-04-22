@@ -119,3 +119,18 @@
     font-weight: 700;
     cursor: pointer;
 }
+.already-reviewed-msg {
+    padding: 30px;
+    border-radius: 20px;
+    margin-bottom: 40px;
+    text-align: center;
+    color: #2D6A4F;
+    font-weight: 500;
+}
+
+.already-reviewed-msg p {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}

@@ -9,39 +9,43 @@ const AIAssistant = () => {
         {
             id: 1,
             type: 'ai',
-            text: "Hello! I am your DryFruit Hub AI Nutritionist. I can help you find the perfect dry fruits for your health goals. What are you looking to achieve today?",
+            text: "Hello! I am your DryFruit Hub AI Nutritionist. I have context on all our premium products in stock. I can help you find the perfect dry fruits for your specific health goals. What are you looking to achieve today?",
             timestamp: new Date()
         }
     ]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const messagesEndRef = useRef(null);
+    const scrollContainerRef = useRef(null);
 
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTo({
+                top: scrollContainerRef.current.scrollHeight,
+                behavior: "smooth"
+            });
+        }
     };
 
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
 
-    const handleSend = async (e) => {
-        e.preventDefault();
-        if (!input.trim() || loading) return;
+    const handleSend = async (queryText) => {
+        if (!queryText || loading) return;
 
         const userMsg = {
             id: Date.now(),
             type: 'user',
-            text: input,
+            text: queryText,
             timestamp: new Date()
         };
 
         setMessages(prev => [...prev, userMsg]);
-        setInput('');
         setLoading(true);
 
         try {
-            const data = await api.post('/ai/ask-general', { question: input });
+            const data = await api.post('/ai/ask-general', { question: queryText });
             
             const aiMsg = {
                 id: Date.now() + 1,
@@ -68,7 +72,8 @@ const AIAssistant = () => {
         { icon: <Heart size={18} />, label: "Heart Health", query: "Which dry fruits are best for heart health?" },
         { icon: <Zap size={18} />, label: "Weight Loss", query: "Can you suggest dry fruits for weight loss?" },
         { icon: <BrainCircuit size={18} />, label: "Brain Power", query: "Which nuts help in memory and focus?" },
-        { icon: <Sparkles size={18} />, label: "Glowing Skin", query: "Best dry fruits for skin and hair?" }
+        { icon: <Sparkles size={18} />, label: "Glowing Skin", query: "Best dry fruits for skin and hair?" },
+        { icon: <Zap size={18} />, label: "Energy Boost", query: "What should I eat for instant energy?" }
     ];
 
     return (
@@ -81,29 +86,16 @@ const AIAssistant = () => {
                     </Link>
                     
                     <div className="sidebar-group">
-                        <h3>Ask About...</h3>
-                        <div className="quick-topics">
-                            {quickTopics.map((topic, i) => (
-                                <button 
-                                    key={i} 
-                                    className="topic-btn glass"
-                                    onClick={() => setInput(topic.query)}
-                                >
-                                    {topic.icon}
-                                    <span>{topic.label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="ai-stats-card glass">
-                        <div className="stat-item">
-                            <span className="label">Expertise</span>
-                            <span className="value">Nutrition & Wellness</span>
-                        </div>
-                        <div className="stat-item">
-                            <span className="label">Base</span>
-                            <span className="value">Verified Scientific Data</span>
+                        <h3>Our Expertise</h3>
+                        <div className="ai-stats-card glass">
+                            <div className="stat-item">
+                                <span className="label">Focus</span>
+                                <span className="value">Nutrition & Wellness</span>
+                            </div>
+                            <div className="stat-item">
+                                <span className="label">Database</span>
+                                <span className="value">Verified Store Inventory</span>
+                            </div>
                         </div>
                     </div>
 
@@ -126,7 +118,7 @@ const AIAssistant = () => {
                         </div>
                     </header>
 
-                    <div className="messages-flow">
+                    <div className="messages-flow" ref={scrollContainerRef}>
                         {messages.map((msg) => (
                             <div key={msg.id} className={`message-wrapper ${msg.type}`}>
                                 {msg.type === 'ai' && (
@@ -162,18 +154,22 @@ const AIAssistant = () => {
                         <div ref={messagesEndRef} />
                     </div>
 
-                    <form className="chat-input-area" onSubmit={handleSend}>
-                        <input 
-                            type="text" 
-                            placeholder="Ask about nutrition, weight loss, or healthy snacking..." 
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            disabled={loading}
-                        />
-                        <button type="submit" className="send-btn" disabled={!input.trim() || loading}>
-                            <Send size={20} />
-                        </button>
-                    </form>
+                    <div className="options-footer glass">
+                        <p className="options-title">Select an area to explore:</p>
+                        <div className="options-grid">
+                            {quickTopics.map((topic, i) => (
+                                <button 
+                                    key={i} 
+                                    className="option-chip"
+                                    onClick={() => handleSend(topic.query)}
+                                    disabled={loading}
+                                >
+                                    {topic.icon}
+                                    <span>{topic.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </main>
             </div>
         </div>

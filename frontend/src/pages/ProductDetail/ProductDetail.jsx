@@ -30,7 +30,6 @@ const ProductDetail = () => {
     const [loading, setLoading] = useState(true);
     const [mainImage, setMainImage] = useState('');
     const [error, setError] = useState(null);
-    const [quantity, setQuantity] = useState(1);
     const [adding, setAdding] = useState(false);
     const [isAISheetOpen, setIsAISheetOpen] = useState(false);
     const [isWishlisted, setIsWishlisted] = useState(false);
@@ -63,8 +62,8 @@ const ProductDetail = () => {
             return;
         }
 
-        if (product.available_stock < quantity) {
-            showToast('Requested quantity exceeds available stock.', 'error');
+        if (product.available_stock < 1) {
+            showToast('This product is currently out of stock.', 'error');
             return;
         }
 
@@ -72,7 +71,7 @@ const ProductDetail = () => {
         try {
             await api.post('/cart/add', {
                 productId: product.id,
-                quantity: quantity
+                quantity: 1
             });
             showToast(`${product.name} added to cart!`, 'success');
             await fetchCartCount();
@@ -160,11 +159,6 @@ const ProductDetail = () => {
                     <p className="detail-description">{product.description}</p>
 
                     <div className="action-row">
-                        <div className="quantity-selector glass">
-                            <button onClick={() => setQuantity(Math.max(1, quantity - 1))}><Minus size={18} /></button>
-                            <span>{quantity}</span>
-                            <button onClick={() => setQuantity(quantity + 1)}><Plus size={18} /></button>
-                        </div>
                         <button
                             className="btn btn-primary add-to-cart-btn"
                             disabled={product.stock_quantity <= 0 || adding}
